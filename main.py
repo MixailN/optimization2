@@ -60,78 +60,128 @@ def get_minimum(x, fx, y, fy):
     return - (b / a)
 
 
-def brent(func, a, b, argument):
-    eps = 1e-5
-    x = w = v = (a + b) / 2
-    fx = fw = fv = func.evalf(subs={argument: x})
+def brent(func, a, b, arguments):
+    iters = 0
+    max_iters = 1000
 
-    fdx = fdw = fdv = func.diff(argument).evalf(subs={argument: x})
+    argue_count = len(arguments)
+    eps = 1e-3
+    print(a, b)
+    x = w = v = [0] * argue_count
+    for i in range(argue_count):
+        x[i] = w[i] = v[i] = (a[i] + b[i]) / 2
 
-    d = e = b - a
+    fx = fw = fv = [0] * argue_count
+    fdx = fdw = fdv = [0] * argue_count
 
-    prev_u = None
-    while True:
-        g, e = e, d
+    for i in range(argue_count):
+        cur_func = func.copy()
+        for arg in range(argue_count):
+            if arg == i:
+                continue
+            cur_func = cur_func.subs(arguments[arg], x[arg])
 
-        u = None
-        # print(f"  a: {a}     b: {b}")
-        # print(f"  x: {x}     v: {v}     w: {w}")
-        # print(f" fx: {fx}    fv: {fv}    fw: {fw}")
-        # print(f"fdx: {fdx} fdw: {fdw} fdv: {fdv}")
-        if x != w and fdx != fdw:
-            u = get_minimum(x, fx, w, fw)
-            if not ((a + eps) <= u <= (b - eps) and abs(u - x) < g / 2):
-                u = None
+        div = cur_func.diff(arguments[i])
 
-        u2 = None
-        if x != v and fdx != fdv:
-            u2 = get_minimum(x, fx, v, fv)
+        fx[i] = fw[i] = fv[i] = cur_func.evalf(subs={arguments[i]: x[i]})
 
-            if (a + eps) <= u2 <= (b - eps) and abs(u2 - x) < g / 2:
-                if u is not None and abs(u2 - x) < abs(u - x):
-                    u = u2
+        fdx[i] = fdw[i] = fdv[i] = div.evalf(subs={arguments[i]: x[i]})
 
-        if u is None:
-            if fdx > 0:
-                u = (a + x) / 2
+    d = e = [(b[i] - a[i]) for i in range(argue_count)]
+    prev_u = [None] * argue_count
+    g = [None] * argue_count
+    while iters < max_iters:
+
+        iters += 1
+
+        for i in range(argue_count):
+            g[i] = e[i]
+        for i in range(argue_count):
+            e[i] = d[i]
+
+        u = [None] * argue_count
+        for i in range(argue_count):
+
+            if x[i] != w[i] and fdx[i] != fdw[i]:
+                u[i] = get_minimum(x[i], fx[i], w[i], fw[i])
+                if not ((a[i] + eps) <= u[i] <= (b[i] - eps) and abs(u[i] - x[i]) < g[i] / 2):
+                    u[i] = None
+
+        u2 = [None] * argue_count
+        for i in range(argue_count):
+            if x[i] != v[i] and fdx[i] != fdv[i]:
+                u2[i] = get_minimum(x[i], fx[i], v[i], fv[i])
+                if (a[i] + eps) <= u2[i] <= (b[i] - eps) and abs(u2[i] - x[i]) < g[i] / 2:
+                    if u[i] is not None and abs(u2[i] - x[i]) < abs(u[i] - x[i]):
+                        u[i] = u2[i]
+
+            if u[i] is None:
+                if fdx[i] > 0:
+                    u[i] = (a[i] + x[i]) / 2
+                else:
+                    u[i] = (x[i] + b[i]) / 2
+
+            if abs(u[i] - x[i]) < eps:
+                u[i] = x[i] + np.sign(u[i] - x[i]) * eps
+
+        fu = [None] * argue_count
+        fdu = [None] * argue_count
+
+        for i in range(argue_count):
+            new_func = func.copy()
+            for arg in range(argue_count):
+                if arg == i:
+                    continue
+                new_func = new_func.subs(arguments[arg], u[arg])
+
+            d[i] = abs(x[i] - u[i])
+            fu[i] = new_func.evalf(subs={arguments[i]: u[i]})
+            div = new_func.diff(arguments[i])
+            fdu[i] = div.evalf(subs={arguments[i]: u[i]})
+
+            if fu[i] <= fx[i]:
+                if u[i] >= x[i]:
+                    a[i] = x[i]
+                else:
+                    b[i] = x[i]
+
+                v[i] = w[i]
+                w[i] = x[i]
+                x[i] = u[i]
+
+                fv[i] = fw[i]
+                fw[i] = fx[i]
+                fx[i] = fu[i]
+
+                fdv[i] = fdw[i]
+                fdw[i] = fdx[i]
+                fdx[i] = fdu[i]
             else:
-                u = (x + b) / 2
+                if u[i] >= x[i]:
+                    b[i] = u[i]
+                else:
+                    a[i] = u[i]
 
-        if abs(u - x) < eps:
-            u = x + np.sign(u - x) * eps
+                if fu[i] <= fw[i] or w[i] == x[i]:
+                    v[i] = w[i]
+                    w[i] = u[i]
 
-        d = abs(x - u)
+                    fv[i] = fw[i]
+                    fw[i] = fu[i]
 
-        fu = func.evalf(subs={argument: u})
-        fdu = func.diff(argument).evalf(subs={argument: u})
+                    fdv[i] = fdw[i]
+                    fdw[i] = fdu[i]
 
-        if fu <= fx:
-            if u >= x:
-                a = x
-            else:
-                b = x
-            x, w, v = u, x, w
-            fx, fw, fv = fu, fx, fw
-            fdx, fdw, fdv = fdu, fdx, fdw
-        else:
-            if u >= x:
-                b = u
-            else:
-                a = u
+                elif fu[i] <= fv[i] or v[i] == x[i] or v[i] == w[i]:
+                    v[i] = u[i]
+                    fv[i] = fu[i]
+                    fdv[i] = fdu[i]
 
-            if fu <= fw or w == x:
-                w, v = u, w
-                fw, fv = fu, fw
-                fdw, fdv = fdu, fdw
-            elif fu <= fv or v == x or v == w:
-                v = u
-                fv = fu
-                fdv = fdu
+            if prev_u[i] is not None and abs(prev_u[i] - u[i]) < eps:
+                break
 
-        if prev_u is not None and abs(prev_u - u) < eps:
-            break
-        prev_u = u
-    return (b + a) / 2
+        prev_u[i] = u[i]
+    return [(b[i] + a[i]) / 2 for i in range(argue_count)]
 
 
 def dict_for_grad(arguments, point):
@@ -200,10 +250,10 @@ func = function1(x1, x2)
 # y = sp.lambdify((x1, x2), f)
 # a = y(5, 4)
 # b = f.evalf(subs={x1: 5, x2: 4})
-# point = fast_descent_methods(func, [x1, x2])
-# print(point)
+point = fast_descent_methods(func, [x1, x2])
+print(point)
 # point = coord_descent(func, [x1, x2])
 # print(point)
 f_brent = f1_brent(x)
-point = brent(f_brent, -0.5, 0.5, x)
+point = brent(func, [-3, 0], [2, 3], [x1, x2])
 print(point)
