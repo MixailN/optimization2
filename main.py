@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 import math
-immport matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 LAMBDA_MAX = 1e-1
@@ -63,7 +63,7 @@ def get_minimum(x, fx, y, fy):
     return - (b / a)
 
 
-def brent(func, a, b, arguments):
+def brent(func, a, b, arguments, eps):
     iters = 0
     max_iters = 1000
 
@@ -130,6 +130,7 @@ def brent(func, a, b, arguments):
         fu = [None] * argue_count
         fdu = [None] * argue_count
 
+        flag = False
         for i in range(argue_count):
             new_func = func.copy()
             for arg in range(argue_count):
@@ -181,10 +182,34 @@ def brent(func, a, b, arguments):
                     fdv[i] = fdu[i]
 
             if prev_u[i] is not None and abs(prev_u[i] - u[i]) < eps:
+                flag = True
                 break
+        if flag:
+            break
+        prev_u = u
+    return x, iters, func.evalf(subs=dict_for_func_arguments(arguments, x))
 
-        prev_u[i] = u[i]
-    return [(b[i] + a[i]) / 2 for i in range(argue_count)]
+
+def proect_grad(func, arguments, epsilon):
+    arque_count = len(arguments)
+    point = [0 for i in range(arque_count)]
+    func_value_prev = func.evalf(subs=dict_for_func_arguments(arguments, point))
+    func_value_next = func_value_prev + 2 * epsilon
+    iterations = 1
+    while math.fabs(func_value_next - func_value_prev) >= epsilon and iterations < 5000:
+        iterations += 1
+        func_value_prev = func.evalf(subs=dict_for_func_arguments(arguments, point))
+        for i in range(arque_count):
+            grad = func.diff(arguments[i])
+            dict_grad = dict_for_func_arguments(arguments, point)
+            grad_value = grad.evalf(subs=dict_grad)
+            lambda_min = \
+                golden_ratio(lambda l:
+                             func.evalf(
+                                 subs=dict_for_changed_point(arguments, point, point[i] - l * grad_value, i)), 1e-5)
+            point[i] -= lambda_min * grad_value
+        func_value_next = func.evalf(subs=dict_for_func_arguments(arguments, point))
+    return point, iterations, func.evalf(subs=dict_for_func_arguments(arguments, point))
 
 
 def dict_for_grad(arguments, point):
@@ -226,8 +251,7 @@ def fast_descent_methods(func, arguments, epsilon):
     return point, iterations, func.evalf(subs=dict_for_func_arguments(arguments, point))
 
 
-def coord_descent(func, arguments):
-    eps = 0.01
+def coord_descent(func, arguments, eps):
     argue_count = len(arguments)
     point = [2 for i in range(argue_count)]
 
@@ -254,7 +278,7 @@ def coord_descent(func, arguments):
             if np.abs(point[i] - copy_point[i]) < eps:
                 return point
 
-    return point, iterations, func.evaf(subs=dict_for_func_arguments(arguments, point))
+    return point, iterations, func.evalf(subs=dict_for_func_arguments(arguments, point))
 
 
 def gradient(arguments, point):
@@ -308,18 +332,20 @@ func = function1(x1, x2)
 # print(point)
 # point = coord_descent(func, [x1, x2])
 # print(point)
-f_brent = f1_brent(x)
-point = brent(f_brent, -0.5, 0.5, x)
 
-point, iterations, func_value = ravine_gradient_method(func, [x1, x2], [-0.5, 0.3], [0, -0.5], 1e-6)
-print('Ravine gradient method:')
+point, iterations, func_value = brent(func, [-2, -2], [2, 2], [x1, x2], 1e-6)
+print('Brent method:')
 print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
-point, iterations, func_value = fast_descent_methods(func, [x1, x2], 1e-5)
-print('Fast descent method:')
-print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
-point, iterations, func_value = coord_descent(func, [x1, x2])
-print('Coord descent method:')
-print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+
+# point, iterations, func_value = ravine_gradient_method(func, [x1, x2], [-0.5, 0.3], [0, -0.5], 1e-6)
+# print('Ravine gradient method:')
+# print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+# point, iterations, func_value = fast_descent_methods(func, [x1, x2], 1e-5)
+# print('Fast descent method:')
+# print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+# point, iterations, func_value = coord_descent(func, [x1, x2], 1e-6)
+# print('Coord descent method:')
+# print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
 
 
 
