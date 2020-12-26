@@ -64,6 +64,7 @@ def get_minimum(x, fx, y, fy):
 
 
 def brent(func, a, b, arguments, eps):
+    prev_points = []
     iters = 0
     max_iters = 1000
 
@@ -76,6 +77,7 @@ def brent(func, a, b, arguments, eps):
 
     fx = fw = fv = [0] * argue_count
     fdx = fdw = fdv = [0] * argue_count
+    prev_points.append(x)
 
     for i in range(argue_count):
         cur_func = func.copy()
@@ -126,6 +128,8 @@ def brent(func, a, b, arguments, eps):
 
             if abs(u[i] - x[i]) < eps:
                 u[i] = x[i] + np.sign(u[i] - x[i]) * eps
+
+        prev_points.append(u)
 
         fu = [None] * argue_count
         fdu = [None] * argue_count
@@ -187,7 +191,7 @@ def brent(func, a, b, arguments, eps):
         if flag:
             break
         prev_u = u
-    return x, iters, func.evalf(subs=dict_for_func_arguments(arguments, x))
+    return x, iters, func.evalf(subs=dict_for_func_arguments(arguments, x)), prev_points
 
 
 def proect_grad(func, arguments, epsilon):
@@ -333,9 +337,9 @@ func = function1(x1, x2)
 # point = coord_descent(func, [x1, x2])
 # print(point)
 
-point, iterations, func_value = brent(func, [-2, -2], [2, 2], [x1, x2], 1e-6)
+point, iterations, func_value, prev_points = brent(func, [-2, -2], [2, 2], [x1, x2], 1e-6)
 print('Brent method:')
-print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value, '\n', 'prev_points: ', prev_points)
 
 # point, iterations, func_value = ravine_gradient_method(func, [x1, x2], [-0.5, 0.3], [0, -0.5], 1e-6)
 # print('Ravine gradient method:')
