@@ -1,5 +1,8 @@
 import numpy as np
 import sympy as sp
+import math
+immport matplotlib.pyplot as plt
+
 
 LAMBDA_MAX = 1e-1
 LAMBDA_MIN = 0
@@ -207,7 +210,9 @@ def fast_descent_methods(func, arguments, epsilon):
     point = [0 for i in range(arque_count)]
     func_value_prev = func.evalf(subs=dict_for_func_arguments(arguments, point))
     func_value_next = func_value_prev + 2 * epsilon
-    while math.fabs(func_value_next - func_value_prev) >= epsilon:
+    iterations = 1
+    while math.fabs(func_value_next - func_value_prev) >= epsilon and iterations < 5000:
+        iterations += 1
         func_value_prev = func.evalf(subs=dict_for_func_arguments(arguments, point))
         for i in range(arque_count):
             grad = func.diff(arguments[i])
@@ -218,7 +223,7 @@ def fast_descent_methods(func, arguments, epsilon):
                                 func.evalf(subs=dict_for_changed_point(arguments, point, point[i] - l * grad_value, i)), 1e-5)
             point[i] -= lambda_min * grad_value
         func_value_next = func.evalf(subs=dict_for_func_arguments(arguments, point))
-    return point
+    return point, iterations, func.evalf(subs=dict_for_func_arguments(arguments, point))
 
 
 def coord_descent(func, arguments):
@@ -228,8 +233,9 @@ def coord_descent(func, arguments):
 
     max_iter = 1000
     step = 0.001
-
+    iterations = 1
     for k in range(max_iter):
+        iterations += 1
         copy_point = point.copy()
         for i in range(argue_count):
             cur_func = func.copy()
@@ -248,7 +254,7 @@ def coord_descent(func, arguments):
             if np.abs(point[i] - copy_point[i]) < eps:
                 return point
 
-    return point
+    return point, iterations, func.evaf(subs=dict_for_func_arguments(arguments, point))
 
 
 def gradient(arguments, point):
@@ -263,7 +269,9 @@ def ravine_gradient_method(func, arguments, point1, point2, epsilon):
     point2 = np.array(point2).astype('float32')
     point1_grad = point1 - l * gradient(arguments, point1)
     point2_grad = point2 - l * gradient(arguments, point2)
+    iterations = 1
     while True:
+        iterations += 1
         func_point1_grad = float(func.evalf(subs=dict_for_func_arguments(arguments, point1_grad)))
         func_point2_grad = float(func.evalf(subs=dict_for_func_arguments(arguments, point2_grad)))
         point3 = point2_grad + h * np.sign(func_point1_grad - func_point2_grad) * \
@@ -286,7 +294,7 @@ def ravine_gradient_method(func, arguments, point1, point2, epsilon):
         if np.linalg.norm(point2 - point1) < epsilon or \
                 abs(func_point1 - func_point2) < epsilon:
             break
-    return point2
+    return point2, iterations, func.evalf(subs=dict_for_func_arguments(arguments, point2))
 
 
 x1, x2, x3, x4 = sp.symbols('x1 x2 x3 x4')
@@ -301,14 +309,17 @@ func = function1(x1, x2)
 # point = coord_descent(func, [x1, x2])
 # print(point)
 f_brent = f1_brent(x)
-point = ravine_gradient_method(func, [x1, x2], [-0.5, 0.3], [0, -0.5], 1e-6)
-print(point)
-point = brent(func, [-3, 0], [2, 3], [x1, x2])
-print(point)
-point = fast_descent_methods(func, [x1, x2], 1e-4)
-print(point)
-point = coord_descent(func, [x1, x2])
-print(point)
-print(func)
+point = brent(f_brent, -0.5, 0.5, x)
+
+point, iterations, func_value = ravine_gradient_method(func, [x1, x2], [-0.5, 0.3], [0, -0.5], 1e-6)
+print('Ravine gradient method:')
+print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+point, iterations, func_value = fast_descent_methods(func, [x1, x2], 1e-5)
+print('Fast descent method:')
+print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+point, iterations, func_value = coord_descent(func, [x1, x2])
+print('Coord descent method:')
+print('point: ', point, '\n', 'iterations: ', iterations, '\n', 'func_value: ', func_value)
+
 
 
